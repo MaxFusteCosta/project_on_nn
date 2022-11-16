@@ -28,9 +28,9 @@ def load(validation_size_p, file_name):
     data, states, params = pickle.load(f)
     states = np.array(states)
     train_val_separation = int(len(data[0]) * (1 - validation_size_p / 100.))
-    training_data = [data[i][:train_val_separation] for i in [0, 1, 2]]
+    training_data = data[:train_val_separation]
     training_states = states[:train_val_separation]
-    validation_data = [data[i][train_val_separation:] for i in [0, 1, 2]]
+    validation_data = data[train_val_separation:]
     validation_states = states[train_val_separation:]
     f.close()
     return (training_data, validation_data, training_states, validation_states, params)

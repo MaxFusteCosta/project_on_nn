@@ -39,9 +39,10 @@ def derivatives(sol,t,L1,L2,m1,m2):
     
 #########################################################################################################################
 
-def generate_data(t_max, t_int, L1, L2, m1, m2, Th1_i, Th2_i, fileName=None):
+def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_int=[1,4], Th1_i_int=[0,2*np.pi], Th2_i_int=[0,2*np.pi], fileName=None):
        
     """
+    N -> Number of runs of the code.
     t_max -> maximum value of the time.
     t_int -> number of time steps desired.
     L1 and L2 -> lengths of the rods of the double pendulum.
@@ -53,29 +54,52 @@ def generate_data(t_max, t_int, L1, L2, m1, m2, Th1_i, Th2_i, fileName=None):
     Theta_1, Theta_2 -> Arrays containing the values of the angles after every step.
     """
     
-    x1,x2,y1,y2=[],[],[],[]
-            
-    # We now solve the differential equations that we defined in the "derivatives" function.
-        
-    t = np.linspace(0,t_max,t_int)
-        
-    sol_i = np.array([Th1_i,0,Th2_i,0])
-    sol = odeint(derivatives, sol_i, t, args=(L1,L2,m1,m2))
-        
-    # We extract only the angles and we use them to define the cartesian coordinates.
-        
-    Theta_1,Theta_2 = sol[:,0],sol[:,2]
+    L1,L2,m1,m2,Th1_i,Th2_i=[],[],[],[],[],[]
+    
+    for i in range(N):
                 
-    x1.append(L1*np.sin(Theta_1))
-    x2.append(L1*np.sin(Theta_1)+L2*np.sin(Theta_2))
-    y1.append(-L1*np.cos(Theta_1))
-    y2.append(-L1*np.cos(Theta_1)-L2*np.cos(Theta_2))
+        L1.append(np.random.uniform(L1_int[0],L1_int[1]))
+        L2.append(np.random.uniform(L2_int[0],L2_int[1]))
+        m1.append(np.random.uniform(m1_int[0],m1_int[1]))
+        m2.append(np.random.uniform(m2_int[0],m2_int[1]))
+        Th1_i.append(np.random.uniform(Th1_i_int[0],Th1_i_int[1]))
+        Th2_i.append(np.random.uniform(Th2_i_int[0],Th2_i_int[1]))
+        
+    # We now initialize the cartesian coordinate and the angle lists and define the time interval.
+       
+    x1,x2,y1,y2,th1,th2=[],[],[],[],[],[]
+    
+    t = np.linspace(0,tmax,t_int)
+    
+    # We will solve our differential equations N times with the given initial conditions.
+    
+    for i in range(N):
+        
+        # We create a set of lists for the cartesian coordinates that we will use only for a given set of initial 
+        # conditions. We label them with the subindex t, meaning temporal. They are reset every time.
+        
+        x1_t,x2_t,y1_t,y2_t=[],[],[],[]
+        
+        sol_i = np.array([Th1_i[i],0,Th2_i[i],0])
+        sol = odeint(derivatives, sol_i, t, args=(L1[i],L2[i],m1[i],m2[i]))
+        
+        Theta_1,Theta_2 = sol[:,0],sol[:,2]
+        
+        for j in range(len(Theta_1)):
+            x1_t.append(L1[i]*np.sin(Theta_1[j]))
+            x2_t.append(L1[i]*np.sin(Theta_1[j])+L2[i]*np.sin(Theta_2[j]))
+            y1_t.append(-L1[i]*np.cos(Theta_1[j]))
+            y2_t.append(-L1[i]*np.cos(Theta_1[j])-L2[i]*np.cos(Theta_2[j])) 
+            
+        x1.append(x1_t),x2.append(x2_t),y1.append(y1_t),y2.append(y2_t)
+        th1.append(Theta_1),th2.append(Theta_2)
+        
+            
     x1,x2,y1,y2=np.array(x1),np.array(x2),np.array(y1),np.array(y2)
-           
-    # We are only interested in two sets of variables: the angles and the cartesian coordinates.
+    th1,th2=np.array(th1),np.array(th2)
     
     data = np.dstack([x1,x2,y1,y2])
-    states = np.dstack([Theta_1,Theta_2])
+    states = np.dstack([th1,th2])
     result=(data,states)
     if fileName is not None:
         f = gzip.open(io.data_path + fileName + ".plk.gz", 'wb')

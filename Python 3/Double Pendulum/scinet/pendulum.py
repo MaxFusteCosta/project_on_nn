@@ -39,7 +39,7 @@ def derivatives(sol,t,L1,L2,m1,m2):
     
 #########################################################################################################################
 
-def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_int=[1,4], Th1_i_int=[0,2*np.pi], Th2_i_int=[0,2*np.pi], fileName=None):
+def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_int=[1,4], Theta_1_ini_int=[0,0], Theta_2_ini_int=[np.pi/8,np.pi/8], show=False, fileName=None):
        
     """
     N -> Number of runs of the code.
@@ -47,14 +47,15 @@ def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_i
     t_int -> number of time steps desired.
     L1 and L2 -> lengths of the rods of the double pendulum.
     m1 and m2 -> masses of the balls at the end of each rod.
-    Th1_i and Th2_i -> initial values of the angles, only used for the first step.
+    Th1_i and Th2_i -> initial values of the angles, only used for the first step, they are fixed. The first one is fixed to be 0 and the second
+    one is fixed to be pi/8.
     
     x1,x2,y1,y2 -> Arrays containing the cartesian coordinates for the double pendulum after every step.
     t -> the time variable, starts at 0 and goes to t_max, with t_int evenly spaced steps.
     Theta_1, Theta_2 -> Arrays containing the values of the angles after every step.
     """
     
-    L1,L2,m1,m2,Th1_i,Th2_i=[],[],[],[],[],[]
+    L1,L2,m1,m2,Theta_1_ini,Theta_2_ini=[],[],[],[],[],[]
     
     for i in range(N):
                 
@@ -62,50 +63,50 @@ def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_i
         L2.append(np.random.uniform(L2_int[0],L2_int[1]))
         m1.append(np.random.uniform(m1_int[0],m1_int[1]))
         m2.append(np.random.uniform(m2_int[0],m2_int[1]))
-        Th1_i.append(np.random.uniform(Th1_i_int[0],Th1_i_int[1]))
-        Th2_i.append(np.random.uniform(Th2_i_int[0],Th2_i_int[1]))
+        Theta_1_ini.append(np.random.uniform(Theta_1_ini_int[0],Theta_1_ini_int[1]))
+        Theta_2_ini.append(np.random.uniform(Theta_2_ini_int[0],Theta_2_ini_int[1]))
         
-    # We now initialize the cartesian coordinate and the angle lists and define the time interval.
+    # We initialize the angle lists and define the two time intervals. The first one is for the training itself, the second one
+    # is for the prediction
        
-    x1,x2,y1,y2,th1,th2=[],[],[],[],[],[]
+    th1,th2=[],[]
+    th1_pred,th2_pred=[],[]
     
     t = np.linspace(0,tmax,t_int)
+    t_pred_int = [0,2*tmax]
+    t_pred = np.reshape(np.random.rand(N) * (t_pred_int[1] - t_pred_int[0]) + t_pred_int[0], [N, 1])
     
-    # We will solve our differential equations N times with the given initial conditions.
-    
+    # We will solve our differential equations N times with the given initial conditions.       
+        
     for i in range(N):
         
-        # We create a set of lists for the cartesian coordinates that we will use only for a given set of initial 
-        # conditions. We label them with the subindex t, meaning temporal. They are reset every time.
-        
-        x1_t,x2_t,y1_t,y2_t=[],[],[],[]
-        
-        sol_i = np.array([Th1_i[i],0,Th2_i[i],0])
+        sol_i = np.array([Theta_1_ini[i],0,Theta_2_ini[i],0])
         sol = odeint(derivatives, sol_i, t, args=(L1[i],L2[i],m1[i],m2[i]))
+        sol_i_pred = np.array([Theta_1_ini[i],0,Theta_2_ini[i],0])
+        sol_pred = odeint(derivatives, sol_i_pred, t, args=(L1[i],L2[i],m1[i],m2[i]))
         
         Theta_1,Theta_2 = sol[:,0],sol[:,2]
-        
-        for j in range(len(Theta_1)):
-            x1_t.append(L1[i]*np.sin(Theta_1[j]))
-            x2_t.append(L1[i]*np.sin(Theta_1[j])+L2[i]*np.sin(Theta_2[j]))
-            y1_t.append(-L1[i]*np.cos(Theta_1[j]))
-            y2_t.append(-L1[i]*np.cos(Theta_1[j])-L2[i]*np.cos(Theta_2[j])) 
-            
-        x1.append(x1_t),x2.append(x2_t),y1.append(y1_t),y2.append(y2_t)
+        Theta_1_pred,Theta_2_pred = sol_pred[:,0],sol_pred[:,0]
         th1.append(Theta_1),th2.append(Theta_2)
+        th1_pred.append(Theta_1_pred),th2_pred.append(Theta_2_pred)
         
-            
-    x1,x2,y1,y2=np.array(x1),np.array(x2),np.array(y1),np.array(y2)
+        if show is not False:
+            if i%(N/10)==0:
+                print('Calculations are at',100*i/N,'%')
+
+    print(len(th1_pred))
     th1,th2=np.array(th1),np.array(th2)
+    th1_pred,th2_pred=np.array(th1_pred),np.array(th2_pred) 
+    print(th1_pred.shape)
+#    th1_pred,th2_pred=np.reshape(th1_pred, [N,1]),np.reshape(th1_pred, [N,1])
+    states = np.vstack([L1,L2,m1,m2]).T
+    result = ([th1, th2, t_pred, th1_pred, th2_pred], states, [])
     
-    data = np.dstack([x1,x2,y1,y2])
-    states = np.dstack([th1,th2])
-    result=(data,states)
     if fileName is not None:
         f = gzip.open(io.data_path + fileName + ".plk.gz", 'wb')
         pickle.dump(result, f, protocol=2)
         f.close()
-    return (result)
+    return ('Data generation complete')    
         
     
     

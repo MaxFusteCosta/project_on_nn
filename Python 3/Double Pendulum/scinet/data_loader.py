@@ -17,8 +17,30 @@ import gzip
 from . import io_nn as io
 import numpy as np
 
+###########################################################################################################
 
 def load(validation_size_p, file_name):
+    """
+    Params:
+    validation_size_p: percentage of data to be used for validation
+    file_name (str): File containing the data
+    """
+    f = gzip.open(io.data_path + file_name + ".plk.gz", 'rb')
+    data, states, params = pickle.load(f)
+    states = np.array(states)
+    train_val_separation = int(len(data[0]) * (1 - validation_size_p / 100.))
+    training_data = [data[i][:train_val_separation] for i in [0, 1, 2]]
+    training_states = states[:train_val_separation]
+    validation_data = [data[i][train_val_separation:] for i in [0, 1, 2]]
+    validation_states = states[train_val_separation:]
+    f.close()
+    return (training_data, validation_data, training_states, validation_states, params)
+
+###########################################################################################################
+
+# The function load_old is still here in case we need to go back to the old model, it has no use currently. 
+
+def load_old(validation_size_p, file_name):
     """
     Params:
     validation_size_p: percentage of data to be used for validation
@@ -34,4 +56,6 @@ def load(validation_size_p, file_name):
     validation_states = states[train_val_separation:]
     f.close()
     return (training_data, validation_data, training_states, validation_states, states)
+
+###########################################################################################################
 

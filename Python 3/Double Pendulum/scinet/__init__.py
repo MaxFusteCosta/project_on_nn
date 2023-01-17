@@ -13,4 +13,5 @@
 #   limitations under the License.
 
 from . import model as nn
+from . import model2 as nn2
 from . import data_loader as dl

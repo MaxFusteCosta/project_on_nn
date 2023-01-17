@@ -2,7 +2,7 @@
 """
 Created on Thu Nov 10 10:47:47 2022
 
-@author: maxfu
+@author: Max Fusté Costa
 """
 
 """
@@ -39,7 +39,7 @@ def derivatives(sol,t,L1,L2,m1,m2):
     
 #########################################################################################################################
 
-def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_int=[1,4], Theta_1_ini_int=[0,0], Theta_2_ini_int=[np.pi/8,np.pi/8], show=False, fileName=None):
+def generate_data(N, t_max, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_int=[1,4], Theta_1_ini_int=[0,0], Theta_2_ini_int=[np.pi/8,np.pi/8], show=False, fileName=None):
        
     """
     N -> Number of runs of the code.
@@ -57,6 +57,8 @@ def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_i
     
     L1,L2,m1,m2,Theta_1_ini,Theta_2_ini=[],[],[],[],[],[]
     
+    # We want to make a total of N measures, so we need N sets of initial conditions. Each set of L, m and initial angles determines a measure.
+    
     for i in range(N):
                 
         L1.append(np.random.uniform(L1_int[0],L1_int[1]))
@@ -72,9 +74,21 @@ def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_i
     th1,th2=[],[]
     th1_pred,th2_pred=[],[]
     
-    t = np.linspace(0,tmax,t_int)
-    t_pred_int = [0,2*tmax]
-    t_pred = np.reshape(np.random.rand(N) * (t_pred_int[1] - t_pred_int[0]) + t_pred_int[0], [N, 1])
+    # We also initialize the cartesian coordinates.
+    
+#    x1,x2,y1,y2=[],[],[],[]
+#    x1_pred,x2_pred,y1_pred,y2_pred=[],[],[],[]
+    
+    # These are the time steps for each measure. We want N measures, each with this amount of time steps in it.
+    
+    t = np.linspace(0,t_max,t_int)
+    
+    # This is the predicted time. Here, we have way more time steps because of the way this is generated, but we are only interested in t time steps.
+    # We generate these random values because it gives the NN a harder time.
+    
+    t_pred_int = [0,2*t_max]
+    t_pred = np.random.rand(N) * (t_pred_int[1] - t_pred_int[0]) + t_pred_int[0]
+    t_pred.sort()
     
     # We will solve our differential equations N times with the given initial conditions.       
         
@@ -83,24 +97,61 @@ def generate_data(N, tmax, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_i
         sol_i = np.array([Theta_1_ini[i],0,Theta_2_ini[i],0])
         sol = odeint(derivatives, sol_i, t, args=(L1[i],L2[i],m1[i],m2[i]))
         sol_i_pred = np.array([Theta_1_ini[i],0,Theta_2_ini[i],0])
-        sol_pred = odeint(derivatives, sol_i_pred, t, args=(L1[i],L2[i],m1[i],m2[i]))
+        sol_pred = odeint(derivatives, sol_i_pred, t_pred, args=(L1[i],L2[i],m1[i],m2[i]))
         
         Theta_1,Theta_2 = sol[:,0],sol[:,2]
-        Theta_1_pred,Theta_2_pred = sol_pred[:,0],sol_pred[:,0]
-        th1.append(Theta_1),th2.append(Theta_2)
-        th1_pred.append(Theta_1_pred),th2_pred.append(Theta_2_pred)
+        Theta_1_pred,Theta_2_pred = sol_pred[:,0],sol_pred[:,2]
+        # We append the whole Theta_1 and Theta_2 into the list because it is the full time evolution of a measure with a certain set of initial conditions.
+        # In total, we will end up with N measures with t_int values for the angles in each of them.
         
+        th1.append(Theta_1),th2.append(Theta_2)       
+        th1_pred.append(Theta_1_pred[i]),th2_pred.append(Theta_2_pred[i])
+        """
+        x1_temp,x2_temp,y1_temp,y2_temp=[],[],[],[]
+        x1_temp_pred,x2_temp_pred,y1_temp_pred,y2_temp_pred=[],[],[],[]
+        
+        for j in range(len(Theta_1)):
+            
+            x1_temp.append(L1[i]*np.sin(Theta_1[j]))
+            x2_temp.append(L1[i]*np.sin(Theta_1[j])+L2[i]*np.sin(Theta_2[j]))
+            y1_temp.append(-L1[i]*np.cos(Theta_1[j]))
+            y2_temp.append(-L1[i]*np.cos(Theta_1[j])-L2[i]*np.cos(Theta_2[j]))
+            
+            x1_temp_pred.append(L1[i]*np.sin(Theta_1_pred[j]))
+            x2_temp_pred.append(L1[i]*np.sin(Theta_1_pred[j])+L2[i]*np.sin(Theta_2_pred[j]))
+            y1_temp_pred.append(-L1[i]*np.cos(Theta_1_pred[j]))
+            y2_temp_pred.append(-L1[i]*np.cos(Theta_1_pred[j])-L2[i]*np.cos(Theta_2_pred[j]))
+            
+        x2_temp=np.array(x2_temp)
+        x2_temp_pred=np.array(x2_temp_pred)
+        x2.append(x2_temp)
+        
+        ratio = N/t_int
+        if i<ratio:
+            x2_pred.append(x2_temp_pred)"""
+      
         if show is not False:
             if i%(N/10)==0:
                 print('Calculations are at',100*i/N,'%')
 
-    print(len(th1_pred))
-    th1,th2=np.array(th1),np.array(th2)
-    th1_pred,th2_pred=np.array(th1_pred),np.array(th2_pred) 
-    print(th1_pred.shape)
-#    th1_pred,th2_pred=np.reshape(th1_pred, [N,1]),np.reshape(th1_pred, [N,1])
+# This is the new part.
+
+    t_pred=np.reshape(t_pred,[N,1])
+    th2 = np.array(th2)
+    th2_pred = np.reshape(th2_pred, [N,1])     
     states = np.vstack([L1,L2,m1,m2]).T
-    result = ([th1, th2, t_pred, th1_pred, th2_pred], states, [])
+#    states = np.vstack([th1,th2]).T
+    result = ([th2,t_pred,th2_pred],states, [])
+    """
+    
+# This works so anything bad happens just restore this.
+
+    t_pred=np.reshape(t_pred,[N,1])
+    th1,th2=np.array(th1),np.array(th2)
+    th1_pred,th2_pred=np.reshape(th1_pred, [N,1]),np.reshape(th2_pred, [N,1])
+    states = np.vstack([L1,L2,m1,m2]).T
+#    result = ([th1, th2, t_pred, th1_pred, th2_pred], states, [])
+    result = ([th2,t_pred,th2_pred],states, [])"""
     
     if fileName is not None:
         f = gzip.open(io.data_path + fileName + ".plk.gz", 'wb')

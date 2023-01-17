@@ -12,6 +12,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+###################################################################################################################
+
+# This model is currently not in use. Right now, I am using the model2 file. The only reason this file was not
+# overwritten was just in case I need to come back to it in the future. Sorry for any confusion this might cause.
+
+###################################################################################################################
+
 import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()

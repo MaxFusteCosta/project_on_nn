@@ -49,8 +49,6 @@ def generate_data(N, t_max, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_
     m1 and m2 -> masses of the balls at the end of each rod.
     Th1_i and Th2_i -> initial values of the angles, only used for the first step, they are fixed. The first one is fixed to be 0 and the second
     one is fixed to be pi/8.
-    
-    x1,x2,y1,y2 -> Arrays containing the cartesian coordinates for the double pendulum after every step.
     t -> the time variable, starts at 0 and goes to t_max, with t_int evenly spaced steps.
     Theta_1, Theta_2 -> Arrays containing the values of the angles after every step.
     """
@@ -69,15 +67,10 @@ def generate_data(N, t_max, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_
         Theta_2_ini.append(np.random.uniform(Theta_2_ini_int[0],Theta_2_ini_int[1]))
         
     # We initialize the angle lists and define the two time intervals. The first one is for the training itself, the second one
-    # is for the prediction
+    # is for the prediction.
        
     th1,th2=[],[]
     th1_pred,th2_pred=[],[]
-    
-    # We also initialize the cartesian coordinates.
-    
-#    x1,x2,y1,y2=[],[],[],[]
-#    x1_pred,x2_pred,y1_pred,y2_pred=[],[],[],[]
     
     # These are the time steps for each measure. We want N measures, each with this amount of time steps in it.
     
@@ -106,58 +99,45 @@ def generate_data(N, t_max, t_int, L1_int=[1,4], L2_int=[1,4], m1_int=[1,4], m2_
         
         th1.append(Theta_1),th2.append(Theta_2)       
         th1_pred.append(Theta_1_pred[i]),th2_pred.append(Theta_2_pred[i])
-        """
-        x1_temp,x2_temp,y1_temp,y2_temp=[],[],[],[]
-        x1_temp_pred,x2_temp_pred,y1_temp_pred,y2_temp_pred=[],[],[],[]
-        
-        for j in range(len(Theta_1)):
-            
-            x1_temp.append(L1[i]*np.sin(Theta_1[j]))
-            x2_temp.append(L1[i]*np.sin(Theta_1[j])+L2[i]*np.sin(Theta_2[j]))
-            y1_temp.append(-L1[i]*np.cos(Theta_1[j]))
-            y2_temp.append(-L1[i]*np.cos(Theta_1[j])-L2[i]*np.cos(Theta_2[j]))
-            
-            x1_temp_pred.append(L1[i]*np.sin(Theta_1_pred[j]))
-            x2_temp_pred.append(L1[i]*np.sin(Theta_1_pred[j])+L2[i]*np.sin(Theta_2_pred[j]))
-            y1_temp_pred.append(-L1[i]*np.cos(Theta_1_pred[j]))
-            y2_temp_pred.append(-L1[i]*np.cos(Theta_1_pred[j])-L2[i]*np.cos(Theta_2_pred[j]))
-            
-        x2_temp=np.array(x2_temp)
-        x2_temp_pred=np.array(x2_temp_pred)
-        x2.append(x2_temp)
-        
-        ratio = N/t_int
-        if i<ratio:
-            x2_pred.append(x2_temp_pred)"""
       
         if show is not False:
             if i%(N/10)==0:
                 print('Calculations are at',100*i/N,'%')
-
-# This is the new part.
-
-    t_pred=np.reshape(t_pred,[N,1])
-    th2 = np.array(th2)
-    th2_pred = np.reshape(th2_pred, [N,1])     
-    states = np.vstack([L1,L2,m1,m2]).T
-#    states = np.vstack([th1,th2]).T
-    result = ([th2,t_pred,th2_pred],states, [])
-    """
     
 # This works so anything bad happens just restore this.
 
-    t_pred=np.reshape(t_pred,[N,1])
+# We now need to save the data. We need to have a similar case to the damped oscillator (we are gonna use the same model), but
+# with 2 inputs and 2 outputs, instead of 1 and 1. For this, we will use the format of the Copernicus problem. 
+
+# First of all, we reshape the input data (that is, th1 and th2) so that they are arrays. Once we have done this, we stack them into
+# the data variable. The shape of the input arrays is (N,t_int), where N is the number of runs and t_int is the amount of time steps in
+# each run.
+
+# The next step is to format the output data (that is, th1_pred and th2_pred). We want it to be an array of shape (N,1), where N is
+# the number of runs. We then stack the output data into the states variable. 
+
+# Additionally, we introduce the parameters of the system stacked into the variable called params. 
+# The whole thing is then saved as part of the result in the order (data, states, params).
+    
     th1,th2=np.array(th1),np.array(th2)
+    data_in=np.dstack([th1,th2])
+    data_in=np.reshape(data_in, [N, 2 * t_int], order='C')
+    
+    t_pred=np.reshape(t_pred,[N,1])  
+    
     th1_pred,th2_pred=np.reshape(th1_pred, [N,1]),np.reshape(th2_pred, [N,1])
+    data_out=np.dstack([th1_pred,th2_pred])
+    data_out=np.reshape(data_out, [N, 2], order='C')     
+
     states = np.vstack([L1,L2,m1,m2]).T
-#    result = ([th1, th2, t_pred, th1_pred, th2_pred], states, [])
-    result = ([th2,t_pred,th2_pred],states, [])"""
+
+    result = ([data_in, t_pred, data_out], states, [])
     
     if fileName is not None:
         f = gzip.open(io.data_path + fileName + ".plk.gz", 'wb')
         pickle.dump(result, f, protocol=2)
         f.close()
-    return ('Data generation complete')    
+    return ('Data generation complete')     
         
     
     
